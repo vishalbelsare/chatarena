@@ -4,7 +4,9 @@
   Author: Yuxiang Wu
   -->
 
-<h1 align="center"> 🏟 <span style="color:orange"><a href="https://www.chatarena.org/">ChatArena</a></span> </h1>
+<p align="center">
+    <img src="./chatarena-text.png" width="500px"/>
+</p>
 
 <h3 align="center">
     <p>Multi-Agent Language Game Environments for LLMs</p>
@@ -13,10 +15,11 @@
 
 [![License: Apache2](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://github.com/chatarena/chatarena/blob/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/chatarena)](https://pypi.org/project/chatarena/)
-[![Python 3.9+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/release/python-370/)
-[![twitter](https://img.shields.io/twitter/follow/_chatarena?style=social&label=Follow%20ChatArena)](https://twitter.com/_chatarena)
-[![slack](https://img.shields.io/badge/Slack-join-blueviolet?logo=slack&amp)](https://join.slack.com/t/chatarena/shared_invite/zt-1t5fpbiep-CbKucEHdJ5YeDLEpKWxDOg)
-[![Open In Colab](https://img.shields.io/badge/Colab-Open%20Notebook-blue?logo=google-colab)](https://colab.research.google.com/drive/1vKaskNMBtuGOVgn8fQxMgjCevn2wp1Ml?authuser=0#scrollTo=P5DCC0Y0Zbxi)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
+[![twitter](https://img.shields.io/twitter/follow/_chatarena?style=social&label=ChatArena)](https://twitter.com/_chatarena)
+[![Discord](https://img.shields.io/discord/961771112864313344?logo=discord&logoColor=white&label=Discord&labelColor=gray&color=blue)](https://join.slack.com/t/chatarena/shared_invite/zt-1t5fpbiep-CbKucEHdJ5YeDLEpKWxDOg)
+[![Open In Colab](https://img.shields.io/badge/Colab-Open%20Notebook-blue?color=yellow&logo=google-colab)](https://colab.research.google.com/drive/1vKaskNMBtuGOVgn8fQxMgjCevn2wp1Ml?authuser=0#scrollTo=P5DCC0Y0Zbxi)
+[![HuggingFace Space](https://img.shields.io/badge/Demo-Huggingface%F0%9F%A4%97-orange?style=flat)](https://chatarena-chatarena-demo.hf.space)
 
 ---
 
@@ -181,7 +184,7 @@ conversation.
 
 ### [Moderator Conversation](chatarena/environments/conversation.py)
 
-Based on converstion, but with a moderator that controls the game dynamics.
+Based on conversation, but with a moderator that controls the game dynamics.
 
 * [Rock-paper-scissors](examples/rock-paper-scissors.json): a 2-player language game environment that simulates a
   rock-paper-scissors game with moderator conversation.
@@ -215,7 +218,7 @@ The objective in the game depends on the role of the player:
 
 A two-player chess game environment that uses the PettingZoo Chess environment.
 
-### [PettingZooTicTacTeo](chatarena/environments/pettingzoo_tictactoe.py)
+### [PettingZoo TicTacToe](chatarena/environments/pettingzoo_tictactoe.py)
 
 A two-player tic-tac-toe game environment that uses the PettingZoo TicTacToe environment. Differing from the
 `Moderator Conversation` environment, this environment is driven by hard-coded rules rather than a LLM moderator.
@@ -260,5 +263,4 @@ Happy chatting!
 We would like to thank our sponsors for supporting this project:
 
 - [SEQUOIA](https://www.sequoiacap.com/)
-- [Shixiang Capital](https://sx.shixiangcap.com/home) 
-
+- [Shixiang Capital](https://sx.shixiangcap.com/home)

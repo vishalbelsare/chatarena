@@ -5,21 +5,26 @@ from __future__ import annotations
 import functools
 import string
 
-from typing import List
-
-from chatarena.environments import Environment
-from chatarena.environments.base import TimeStep
-from chatarena.message import Message
+from colorama import Fore
 from gymnasium import spaces
 from gymnasium.utils import EzPickle
 from pettingzoo import AECEnv
 from pettingzoo.utils.env import AgentID, ObsType
 
-from chatarena.environments.umshini.debate import create_debate_env
-from chatarena.environments.umshini.symmetric_content_moderation import (
+from chatarena.environments import Environment
+from chatarena.environments.base import TimeStep
+from chatarena.environments.umshini.content_moderation import (
     create_content_moderation_env,
 )
-from chatarena.environments.umshini.symmetric_deception import create_deception_env
+from chatarena.environments.umshini.debate import create_debate_env
+from chatarena.environments.umshini.deception import create_deception_env
+from chatarena.environments.umshini.symmetric_content_moderation import (
+    create_symmetric_content_moderation_env,
+)
+from chatarena.environments.umshini.symmetric_deception import (
+    create_symmetric_deception_env,
+)
+from chatarena.message import Message
 
 CHAR_SET = string.printable
 
@@ -50,7 +55,7 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
         character_limit: int | None = 4000,
         render_mode: str | None = None,
         save_json: bool | None = False,
-        disable_judging: bool | None = True
+        disable_judging: bool | None = False,
     ):
         """Wrapper to convert a ChatArena environment into a PettingZoo environment.
 
@@ -89,20 +94,36 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
             )
         elif env is not None:
             self._env = env
-            if hasattr(env, "topic"):
+            if self._env.type_name == "debate":
+                self.env_name = "debate"
                 self.topic = topic
                 self.max_turns = round_length
-            elif hasattr(env, "moderation_policy"):
+            elif self._env.type_name == "content_moderation":
+                self.env_name = "content_moderation"
+                self.moderation_policy = env.moderation_policy
+                self.max_turns = round_length
+            elif self._env.type_name == "symmetric_content_moderation":
+                self.env_name = "symmetric_content_moderation"
                 self.moderation_policy = env.moderation_policy
                 self.max_turns = round_length * 2
-            elif hasattr(env, "restricted_action"):
+            elif self._env.type_name == "deception":
+                self.env_name = "deception"
+                self.restricted_action = env.restricted_action
+                self.max_turns = round_length
+            elif self._env.type_name == "symmetric_deception":
+                self.env_name = "symmetric_deception"
                 self.restricted_action = env.restricted_action
                 self.max_turns = round_length * 2
         elif env_name is not None:
+            self.env_name = env_name
             if env_name == "debate":
                 assert topic is not None, "topic must be specified for debate env"
                 self._env = create_debate_env(
-                    topic=topic, player_names=player_names, round_length=round_length, disable_judging=disable_judging
+                    topic=topic,
+                    player_names=player_names,
+                    round_length=round_length,
+                    character_limit=character_limit,
+                    disable_judging=disable_judging,
                 )
                 self.topic = topic
                 self.max_turns = round_length
@@ -114,6 +135,20 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
                     moderation_policy=moderation_policy,
                     player_names=player_names,
                     round_length=round_length,
+                    character_limit=character_limit,
+                    disable_judging=disable_judging,
+                )
+                self.moderation_policy = moderation_policy
+                self.max_turns = round_length
+            elif env_name == "symmetric_content_moderation":
+                assert (
+                    moderation_policy is not None
+                ), "moderation policy must be specified for content moderation env"
+                self._env = create_symmetric_content_moderation_env(
+                    moderation_policy=moderation_policy,
+                    player_names=player_names,
+                    round_length=round_length,
+                    character_limit=character_limit,
                     disable_judging=disable_judging,
                 )
                 self.moderation_policy = moderation_policy
@@ -126,13 +161,27 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
                     restricted_action=restricted_action,
                     player_names=player_names,
                     round_length=round_length,
+                    character_limit=character_limit,
+                    disable_judging=disable_judging,
+                )
+                self.restricted_action = restricted_action
+                self.max_turns = round_length
+            elif env_name == "symmetric_deception":
+                assert (
+                    restricted_action is not None
+                ), "restricted action must be specified for deception env"
+                self._env = create_symmetric_deception_env(
+                    restricted_action=restricted_action,
+                    player_names=player_names,
+                    round_length=round_length,
+                    character_limit=character_limit,
                     disable_judging=disable_judging,
                 )
                 self.restricted_action = restricted_action
                 self.max_turns = round_length * 2
             else:
                 raise TypeError(
-                    f"Environment not found: {env_name}. Options: debate, content_moderation, deception"
+                    f"Environment not found: {env_name}. Options: debate, content_moderation, deception, symmetric_content_moderation, symmetric_deception"
                 )
         else:
             raise TypeError(
@@ -171,7 +220,7 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent: AgentID):
-        """observation_space.
+        """Observation_space.
 
         We get the observation space from the underlying environment.
         Supports both string and dict observations spaces.
@@ -196,7 +245,7 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
 
     @functools.lru_cache(maxsize=None)
     def action_space(self, agent: AgentID):
-        """action_space.
+        """Action_space.
 
         Get the action space from the underlying environment.
         Action space currently only supports messages to all players, but could be extended to support private messages.
@@ -212,7 +261,7 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
         )
 
     def render(self):
-        """render.
+        """Render.
 
         Print the current game state.
         """
@@ -227,12 +276,34 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
                 raise Exception("New messages not found")
             else:
                 for message in new_messages:
-                    print(
-                        f"[{message.agent_name}->{message.visible_to}]: {message.content}\n"
-                    )
+                    # Don't repeat things from previous turns
+                    if not self.current_turn > message.turn:
+                        if message.agent_name == "Moderator":
+                            color = Fore.BLACK
+                            role = ""
+                        else:
+                            if self.infos[message.agent_name]["role"] == "attacker":
+                                color = Fore.RED
+                                role = "(attacker)"
+                            elif self.infos[message.agent_name]["role"] == "defender":
+                                color = Fore.BLUE
+                                role = "(defender)"
+                            elif self.infos[message.agent_name]["role"] == "proponent":
+                                color = Fore.BLUE
+                                role = "(proponent)"
+                            elif self.infos[message.agent_name]["role"] == "opponent":
+                                color = Fore.RED
+                                role = "(opponent)"
+                            else:
+                                raise Exception("Glitch in internal logic")
+                        print(
+                            color
+                            + f"[{message.agent_name} {role}-> {message.visible_to}]: {message.content}\n "
+                            + Fore.BLACK
+                        )
 
     def observe(self, agent: AgentID) -> ObsType:
-        """observe.
+        """Observe.
 
         Args:
             agent (AgentID): agent (e.g., "Player 1")
@@ -244,10 +315,8 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
         if agent not in self.agents:
             return None
         # Observations and infos are calculated in step(), but need to be calculated before the first step() call
-        elif type(agent) != str:
+        elif not isinstance(agent, str):
             raise TypeError("AgentID must be a string")
-        elif self.observations[agent] != {}:
-            return self.observations[agent]
         else:
             # get only the messages that this agent can see
             messages = self._env.get_observation(agent)
@@ -262,7 +331,7 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
             new_messages = [m for m in messages if m.turn == self.current_turn]
 
             # string observation (optional flag)
-            if self.string_observation is True:
+            if self.string_observation:
                 observation = ""
                 for m in new_messages:
                     observation += f"{m.agent_name}: {m.content}"
@@ -281,8 +350,36 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
             }
             self.infos[agent]["player_name"] = self.agent_selection
 
+            # Role in symmetric environments (not applicable if env has terminated)
+            if self.env_name == "debate":
+                if not any(self.terminations.values()):
+                    self.infos[self.possible_agents[0]]["role"] = self._env.roles[
+                        self.possible_agents[0]
+                    ]
+                    self.infos[self.possible_agents[1]]["role"] = self._env.roles[
+                        self.possible_agents[1]
+                    ]
+            elif self.env_name in [
+                "content_moderation",
+                "deception",
+                "symmetric_content_moderation",
+                "symmetric_deception",
+            ]:
+                if hasattr(self._env, "_current_phase") and not any(
+                    self.terminations.values()
+                ):
+                    if (
+                        self._env._current_phase == "player_2_attack"
+                        or "Roles are being swapped" in new_messages[-1].content
+                    ):
+                        self.infos[self.possible_agents[0]]["role"] = "defender"
+                        self.infos[self.possible_agents[1]]["role"] = "attacker"
+                    else:
+                        self.infos[self.possible_agents[0]]["role"] = "attacker"
+                        self.infos[self.possible_agents[1]]["role"] = "defender"
+
             # info: generate string of full chat log
-            if self.string_observation is True:
+            if self.string_observation:
                 all_messages_string = ""
                 for m in messages:
                     all_messages_string += f"[{m.agent_name}->all]: {m.content}\n"
@@ -299,19 +396,31 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
             return observation
 
     def close(self):
-        """close."""
-        msg_lst: List[Message] = self._env.message_pool.get_all_messages()
-        formatted_state = [{"name": m.agent_name, "turn": m.turn, "text": m.content} for m in msg_lst]
+        """Close."""
+        msg_lst: list[Message] = self._env.message_pool.get_all_messages()
+        formatted_state = [
+            {"name": m.agent_name, "turn": m.turn, "text": m.content} for m in msg_lst
+        ]
         if self.save_json:
             import json
             import os
             from pathlib import Path
+
             Path("env_logs").mkdir(exist_ok=True)
             os.chdir("env_logs")
             files = os.listdir()
-            files = [f for f in files if f.startswith(self.metadata["name"]) and f.endswith(".json")]
-            json.dump(formatted_state, open(self.metadata["name"] + str(len(files)) + ".json", "w"))
-            print(f"Chatlog has been saved to disk: {self.metadata['name'] + str(len(files)) + '.json'}")
+            files = [
+                f
+                for f in files
+                if f.startswith(self.metadata["name"]) and f.endswith(".json")
+            ]
+            json.dump(
+                formatted_state,
+                open(self.metadata["name"] + str(len(files)) + ".json", "w"),
+            )
+            print(
+                f"Chatlog has been saved to disk: {self.metadata['name'] + str(len(files)) + '.json'}"
+            )
         else:
             return formatted_state
 
@@ -329,7 +438,7 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
         new_messages = [m for m in messages if m.turn == self.current_turn]
 
         # string observation (optional flag)
-        if self.string_observation is True:
+        if self.string_observation:
             observation = ""
             for m in new_messages:
                 observation += f"{m.agent_name}: {m.content}"
@@ -358,11 +467,33 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
         info["player_name"] = self.agent_selection
 
         # info: generate string of full chat log
-        if self.string_observation is True:
+        if self.string_observation:
             all_messages_string = ""
             for m in messages:
                 all_messages_string += f"[{m.agent_name}->all]: {m.content}\n"
             info["all_messages_string"] = all_messages_string
+
+        # Role in debate environment
+        if self.env_name == "debate":
+            self.infos[self.possible_agents[0]]["role"] = self._env.roles[
+                self.possible_agents[0]
+            ]
+            self.infos[self.possible_agents[1]]["role"] = self._env.roles[
+                self.possible_agents[1]
+            ]
+        # Role in symmetric environments
+        elif hasattr(self._env, "_current_phase"):
+            if (
+                self._env._current_phase == "player_2_attack"
+                or self._env._current_phase == "end"
+            ):
+                self.infos[self.possible_agents[0]]["role"] = "defender"
+                self.infos[self.possible_agents[1]]["role"] = "attacker"
+            else:
+                self.infos[self.possible_agents[0]]["role"] = "attacker"
+                self.infos[self.possible_agents[1]]["role"] = "defender"
+
+        info["role"] = self.infos[self.agent_selection]["role"]
 
         # info: environment specific information
         if hasattr(self, "restricted_action"):
@@ -380,7 +511,7 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
         seed: int | None = None,
         options: dict | None = None,
     ):
-        """reset.
+        """Reset.
 
         Args:
             seed (Optional[int]): seed
@@ -402,18 +533,14 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
         self.terminations = {agent: False for agent in self.agents}
         self.truncations = {agent: False for agent in self.agents}
         # info keys: turn, new_messages, all_messages, obs_dict, player_name, all_messages_string, restricted_action, moderation_policy, topic
-        self.infos = {
-            agent: {}
-            for agent in self.possible_agents
-        }
+        self.infos = {agent: {} for agent in self.possible_agents}
 
         # get the first player
         self._agent_selector = self._env.agent_selector
         self.agent_selection = self._agent_selector.reset()
 
-        # get the first observation
-        observation = self.observe(self.agent_selection)
-        info = self.infos[self.agent_selection]
+        # get the first observation (but don't return it, as AEC envs use last() for initial obs)
+        self.observe(self.agent_selection)
 
         # render the environment (print the initial scenario text)
         if self.render_mode is not None:
@@ -439,17 +566,6 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
         observation, reward, termination, truncation, info = self._unravel_timestep(
             timestep
         )
-        # add moderator messages to info so they are rendered
-        # some environments (e.g., debate) have the moderator announce the winner as the last message
-        if termination or truncation:
-            if info["all_messages"][-1].agent_name == "Moderator":
-                info["new_messages"].append(info["all_messages"][-2])
-
-        # account for the moderator interjecting statements such as "roles are being swapped"
-        # first turn we already render the moderator's message, so we don't need to add the message here
-        if info["turn"] > 1:
-            if len(info["all_messages"]) > 1 and info["all_messages"][-2].agent_name == "Moderator":
-                info["new_messages"].append(info["all_messages"][-2])
 
         self.observations[agent] = observation
         self.rewards = reward
@@ -464,13 +580,18 @@ class PettingZooCompatibilityV0(AECEnv, EzPickle):
             self.truncations = {agent: True for agent in self.possible_agents}
 
         # Update total rewards for each agent (in one timestep both agents can get rewards/penalties)
-        self.total_rewards[agent] += self._cumulative_rewards[agent]
+        for agent in self.agents:
+            self.total_rewards[agent] += self.rewards[agent]
 
         # Reset PettingZoo cumulative_rewards attribute (tracks accumulated rewards for an agent since its previous action)
         self._cumulative_rewards[agent] = 0
 
         if self.render_mode is not None:
             self.render()
+
+        # Print final scores if the env has just terminated (debate moderator final message already shows scores)
+        if termination and self.env_name != "debate" and self.render_mode is not None:
+            print(Fore.BLACK + f"TOTAL SCORES: {self.total_rewards}")
 
         # Get the next agent in PettingZoo, and iterate the underlying environment (used for reward calculations)
         self.agent_selection = self._agent_selector.next()

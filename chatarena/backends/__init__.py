@@ -1,21 +1,10 @@
 from ..config import BackendConfig
-
-from .base import IntelligenceBackend
-from .openai import OpenAIChat
-from .cohere import CohereAIChat
-from .human import Human
-from .hf_transformers import TransformersConversational
 from .anthropic import Claude
-
-ALL_BACKENDS = [
-    Human,
-    OpenAIChat,
-    CohereAIChat,
-    TransformersConversational,
-    Claude,
-]
-
-BACKEND_REGISTRY = {backend.type_name: backend for backend in ALL_BACKENDS}
+from .base import BACKEND_REGISTRY, IntelligenceBackend, register_backend
+from .cohere import CohereAIChat
+from .hf_transformers import TransformersConversational
+from .human import Human
+from .openai import OpenAIChat
 
 
 # Load a backend from a config dictionary
